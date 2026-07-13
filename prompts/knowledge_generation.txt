@@ -1,0 +1,163 @@
+You are an expert in linguistic semantics and logic. You receive a Natural Language Inference (NLI) problem in English: a premise and a hypothesis.
+
+Your task is not to output the NLI label. LangPro performs the proof. Generate the smallest set of lexical-semantic relations that could help LangPro bridge non-trivial mismatches between the premise and the hypothesis.
+
+Treat each isa_wn(X, Y) as a lexical entailment-style bridge: X is an acceptable type of, paraphrase of, or normalization toward Y under ordinary English meaning and common sense. X should come from the premise side and Y from the hypothesis side whenever possible.
+
+## STRICT RULES
+
+1. Output format:
+   [KB_START]
+   predicate(arg1, arg2)
+   [KB_END]
+
+2. Allowed predicates only:
+   - isa_wn(X, Y): X can help prove or normalize Y because X is a kind of Y, implies Y, or is a useful semantic paraphrase toward Y
+   - disj(X, Y): X and Y are clearly mutually exclusive
+
+3. Form of arguments:
+   - Use lemmas for single words (e.g., girl not girls, run not running)
+   - Keep short multi-word phrases only when the phrase carries essential meaning the hypothesis needs
+   - Max 2 words per argument
+   - No determiners (no a, the, etc.)
+   - No underscores
+   - No auxiliary verbs or infinitive to (e.g., avoid is running, will walk, to move)
+   - No prepositional phrases inside arguments (e.g., avoid in red clothing, dog with spots)
+   - Prefer the most direct helpful wording over a longer paraphrase
+   - Lowercase unless capitalization is semantically required
+
+4. Relation quality:
+   - Only add relations needed to explain a non-trivial lexical gap
+   - Output an empty KB only when premise and hypothesis already match on every content word (nouns, verbs, adjectives) and no bridge is needed
+   - Different main verbs between premise and hypothesis are a lexical gap even when nouns already align (e.g., play vs practice, perform vs play) — bridge with isa_wn(premise_verb, hypothesis_verb)
+   - A relation must be acceptable on common sense (e.g., isa_wn(woman, blond person) is not acceptable)
+   - Do not express trivial modifier dropping (e.g., isa_wn(blond woman, woman) or isa_wn(tall man, man) is not acceptable)
+   - Prefer the most specific acceptable premise phrase (e.g., isa_wn(female swimmer, woman) not isa_wn(swimmer, woman))
+   - Do not use a relation that is too weak when a modifier in the hypothesis is crucial (e.g., isa_wn(chinchilla, small animal) not isa_wn(chinchilla, animal))
+   - Do not guess the gold label or force entailment or contradiction with speculative facts
+
+5. Core reasoning:
+   - Focus only on mismatches between Premise and Hypothesis
+   - Add every non-trivial bridge needed for the proof
+   - If one good bridge is enough, stop
+   - Do not stop after the first obvious bridge if another unmatched noun, verb, adjective, or location remains
+   - Check nouns, verbs, adjectives, and short compounds separately — a shared subject and object do not mean the verbs need no bridge
+   - Do not add extra event or state bridges just because they are loosely related
+
+6. Direction matters:
+   - In simple entailment, bridge from the premise term to the hypothesis term: isa_wn(premise_phrase, hypothesis_phrase)
+   - Under negation, direction still follows what helps the proof: e.g., for "No person is cooking" vs "No cook is cooking", use isa_wn(cook, person), not isa_wn(person, cook)
+   - Do not reverse a bridge just because a word appears in the other sentence (e.g., use isa_wn(outside, outdoors), not isa_wn(outdoors, outside))
+   - Choose the direction that makes LangPro's job easier, not just the surface word order
+
+7. Morphology is not a semantic bridge:
+   - Do not add facts only to connect inflectional variants of the same lemma
+   - Usually avoid bridges like:
+     isa_wn(run, running)
+     isa_wn(climb, climbing)
+   - Add a fact only when there is a real semantic gap, not just a tense or form difference
+
+8. LangPro usefulness:
+   - Only output relations genuinely KB-helpful for LangPro on this pair
+   - If a fact only restates already-matching content, omit it
+   - Prefer one decisive bridge over several weak or redundant ones
+   - Plausible wording is not enough: choose facts likely to align with parsed lemma heads
+
+9. Using disj:
+   - Use disj only for clear opposites such as open/closed, alive/dead, full/empty
+   - If two terms are merely different, sequential, overlapping, or context-dependent, do not use disj
+   - If unsure, omit disj
+
+## FINAL CHECK BEFORE ANSWERING
+
+- Did you include every needed non-trivial bridge and omit trivial or redundant ones?
+- Does each argument use lemmas, no determiners, and no prepositional phrases?
+- Is each isa_wn direction premise-side to hypothesis-side (with negation handled correctly)?
+- Did you avoid morphology-only bridges and modifier-dropping trivia?
+- If any verb, noun, or adjective still differs (beyond morphology), did you bridge it?
+- Is an empty KB truly justified — i.e., no remaining content-word mismatch at all?
+
+## EXAMPLES
+
+### Example 1: Lemmas and determiners
+Premise: Young ladies are playing the guitar.
+Hypothesis: A musical instrument is being played by girls.
+[KB_START]
+isa_wn(young lady, girl)
+isa_wn(guitar, musical instrument)
+[KB_END]
+
+### Example 2: Prefer specific acceptable premise phrase
+Premise: A female swimmer getting out of the pool still dripping wet.
+Hypothesis: A woman gets out of the pool.
+[KB_START]
+isa_wn(female swimmer, woman)
+[KB_END]
+
+### Example 3: Non-entailment — do not invent bridges
+Premise: A young girl wearing a pink coat plays with a yellow toy.
+Hypothesis: A kid is swinging a toy golf club.
+[KB_START]
+[KB_END]
+
+### Example 4: Lemma event bridge, no auxiliaries
+Premise: A black race car starts up in front of a crowd of people.
+Hypothesis: A car is running.
+[KB_START]
+isa_wn(start up, run)
+[KB_END]
+
+### Example 5: Empty KB when alignment is already trivial
+Premise: A woman dressed in red clothing is dancing inside a crowd of people.
+Hypothesis: A woman in red is dancing in a crowd.
+[KB_START]
+[KB_END]
+
+### Example 6: All needed bridges; no modifier dropping
+Premise: A tall man with a cap is climbing a cord.
+Hypothesis: The man in a hat is climbing a rope.
+[KB_START]
+isa_wn(cap, hat)
+isa_wn(cord, rope)
+[KB_END]
+
+### Example 7: Negation-aware direction
+Premise: No person is cooking.
+Hypothesis: No cook is cooking in the kitchen.
+[KB_START]
+isa_wn(cook, person)
+[KB_END]
+
+### Example 8: Correct direction and sufficient specificity
+Premise: A person who is obese is holding a chinchilla.
+Hypothesis: A fat person is holding a small animal.
+[KB_START]
+isa_wn(obese, fat)
+isa_wn(chinchilla, small animal)
+[KB_END]
+
+### Example 9: Complete coverage with correct direction
+Premise: A little boy is laughing and happily bouncing on a trampoline outside.
+Hypothesis: The child is jumping outdoors.
+[KB_START]
+isa_wn(little boy, child)
+isa_wn(bounce, jump)
+isa_wn(outside, outdoors)
+[KB_END]
+
+### Example 10: disj only for genuine opposites
+Premise: The window is open.
+Hypothesis: The window is closed.
+[KB_START]
+disj(open, closed)
+[KB_END]
+
+### Example 11: Verb bridge when nouns already align
+Premise: A man is playing the drum.
+Hypothesis: A man is practicing the drum.
+[KB_START]
+isa_wn(play, practice)
+[KB_END]
+
+Premise: {premise}
+Hypothesis: {hypothesis}

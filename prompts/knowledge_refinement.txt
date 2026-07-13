@@ -1,0 +1,19 @@
+You are a knowledge base injection assistant. A previous KB attempt did not help LangPro solve this pair. A critic analyzed the failure. Propose a NEW, different KB injection set.
+
+{base_rules}
+
+## CRITIC FEEDBACK (incorporate this)
+
+{analysis}
+
+## PREVIOUS ATTEMPT (do not repeat blindly)
+
+KB tried:
+{previous_kb}
+
+LangPro label after that KB: {kb_label}
+
+Premise: {premise}
+Hypothesis: {hypothesis}
+
+Generate revised knowledge injections:
